@@ -414,6 +414,6 @@ function mapFileToRemoteUri(uri: string): string {
 	return uri.replace(/^file:\/\//, 'vscode-remote://' + cliRemoteAuthority);
 }
 
-let [, , productName, version, commit, executableName, ...remainingArgs] = process.argv;
-main({ productName, version, commit, executableName }, remainingArgs);
+// let [, , productName, version, commit, executableName, ...remainingArgs] = process.argv;
+// main({ productName, version, commit, executableName }, remainingArgs);
 
