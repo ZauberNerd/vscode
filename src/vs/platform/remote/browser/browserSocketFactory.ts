@@ -274,7 +274,8 @@ export class BrowserSocketFactory implements ISocketFactory {
 
 	connect(host: string, port: number, query: string, debugLabel: string, callback: IConnectCallback): void {
 		const webSocketSchema = (/^https:/.test(window.location.href) ? 'wss' : 'ws');
-		const socket = this._webSocketFactory.create(`${webSocketSchema}://${/:/.test(host) ? `[${host}]` : host}:${port}/?${query}&skipWebSocketFrames=false`, debugLabel);
+		/* @coder: Modified to work against the current path. */
+		const socket = this._webSocketFactory.create(`${webSocketSchema}://${window.location.host}${window.location.pathname}?${query}&skipWebSocketFrames=false`, debugLabel);
 		const errorListener = socket.onError((err) => callback(err, undefined));
 		socket.onOpen(() => {
 			errorListener.dispose();

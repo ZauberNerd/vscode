@@ -163,43 +163,34 @@ export class WebClientServer {
 	 */
 	private createRequestUrl(req: http.IncomingMessage, parsedUrl: url.UrlWithParsedQuery, pathname: string): URL {
 		const pathPrefix = getPathPrefix(parsedUrl.pathname!);
-
-		// TODO: there isn't a good way for to determine the protocol. Defaulting to `http` for now.
-		return new URL(path.join('/', pathPrefix, pathname), `http://${req.headers.host}`);
+		const remoteAuthority = this.getRemoteAuthority(req);
+		return new URL(path.join('/', pathPrefix, pathname), remoteAuthority);
 	}
 
 	private _iconSizes = [192, 512];
 
-	private getRemoteAuthority = (req: http.IncomingMessage): string => {
-		let remoteAuthority: string | undefined;
-
+	private getRemoteAuthority(req: http.IncomingMessage): URL {
 		if (req.headers.forwarded) {
 			const [parsedHeader] = parseForwardHeader(req.headers.forwarded);
+			return new URL(`${parsedHeader.proto}://${parsedHeader.host}`);
+		}
 
-			if (parsedHeader && parsedHeader.host) {
-				return parsedHeader.host;
+		/* Return first non-empty header. */
+		const parseHeaders = (headerNames: string[]): string | undefined => {
+			for (const headerName of headerNames) {
+				const header = req.headers[headerName]?.toString();
+				if (!isFalsyOrWhitespace(header)) {
+					return header;
+				}
 			}
-		}
+			return undefined;
+		};
 
-		// Listed in order of priority
-		const headerNames = [
-			'X-Forwarded-Host',
-			'host'
-		];
+		const proto = parseHeaders(["X-Forwarded-Proto"]) || "http";
+		const host = parseHeaders(["X-Forwarded-Host", "host"]) || "localhost";
 
-		for (const headerName of headerNames) {
-			const header = req.headers[headerName]?.toString();
-			if (!isFalsyOrWhitespace(header)) {
-				return header!;
-			}
-		}
-
-		if (isFalsyOrWhitespace(remoteAuthority)) {
-			throw new Error('Remote authority not present in host headers');
-		}
-
-		return null as never;
-	};
+		return new URL(`${proto}://${host}`);
+	}
 
 	/**
 	 * PWA manifest file. This informs the browser that the app may be installed.
@@ -284,7 +275,8 @@ export class WebClientServer {
 		}
 
 		const remoteAuthority = this.getRemoteAuthority(req);
-		const transformer = createRemoteURITransformer(remoteAuthority);
+
+		const transformer = createRemoteURITransformer(remoteAuthority.host);
 		const { workspacePath, isFolder } = await this._getWorkspaceFromCLI();
 
 		function escapeAttribute(value: string): string {
@@ -306,7 +298,6 @@ export class WebClientServer {
 			scopes: [['user:email'], ['repo']]
 		} : undefined;
 
-
 		const data = (await util.promisify(fs.readFile)(filePath)).toString()
 			.replace('{{WORKBENCH_WEB_CONFIGURATION}}', escapeAttribute(JSON.stringify(<IWorkbenchConstructionOptions>{
 				productConfiguration: {
@@ -318,7 +309,8 @@ export class WebClientServer {
 				},
 				folderUri: (workspacePath && isFolder) ? transformer.transformOutgoing(URI.file(workspacePath)) : undefined,
 				workspaceUri: (workspacePath && !isFolder) ? transformer.transformOutgoing(URI.file(workspacePath)) : undefined,
-				remoteAuthority,
+				// Add port to prevent client-side mismatch for reverse proxies.
+				remoteAuthority: `${remoteAuthority.hostname}:${remoteAuthority.port || (remoteAuthority.protocol === 'https:' ? '443' : '80')}`,
 				_wrapWebWorkerExtHostInIframe,
 				developmentOptions: { enableSmokeTestDriver: this._environmentService.driverHandle === 'web' ? true : undefined },
 				settingsSyncOptions: !this._environmentService.isBuilt && this._environmentService.args['enable-sync'] ? { enabled: true } : undefined,
@@ -331,14 +323,15 @@ export class WebClientServer {
 			'default-src \'self\';',
 			'img-src \'self\' https: data: blob:;',
 			'media-src \'none\';',
-			`script-src 'self' 'unsafe-eval' ${this._getScriptCspHashes(data).join(' ')} 'sha256-cb2sg39EJV8ABaSNFfWu/ou8o1xVXYK7jp90oZ9vpcg=' http://${remoteAuthority};`, // the sha is the same as in src/vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html
+			// the sha is the same as in src/vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html
+			`script-src 'self' 'unsafe-eval' ${this._getScriptCspHashes(data).join(' ')} 'sha256-cb2sg39EJV8ABaSNFfWu/ou8o1xVXYK7jp90oZ9vpcg=';`,
 			'child-src \'self\';',
 			`frame-src 'self' https://*.vscode-webview.net ${this._productService.webEndpointUrl || ''} data:;`,
 			'worker-src \'self\' data:;',
 			'style-src \'self\' \'unsafe-inline\';',
 			'connect-src \'self\' ws: wss: https:;',
 			'font-src \'self\' blob:;',
-			'manifest-src \'self\';'
+			'manifest-src \'self\' https://cloud.coder.com https://github.com;'
 		].join(' ');
 
 		res.writeHead(200, {
@@ -499,7 +492,7 @@ export class WebClientServer {
 			.replace(/{{ERROR_HEADER}}/g, () => `${applicationName}`)
 			.replace(/{{ERROR_CODE}}/g, () => code.toString())
 			.replace(/{{ERROR_MESSAGE}}/g, () => message)
-			.replace(/{{ERROR_FOOTER}}/g, () => `${version} — ${commit}`)
+			.replace(/{{ERROR_FOOTER}}/g, () => `${version} - ${commit}`)
 			.replace(/{{CLIENT_BACKGROUND_COLOR}}/g, () => clientTheme.backgroundColor)
 			.replace(/{{CLIENT_FOREGROUND_COLOR}}/g, () => clientTheme.foregroundColor);
 
