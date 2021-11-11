@@ -10,8 +10,10 @@ import { refineServiceDecorator } from 'vs/platform/instantiation/common/instant
 import { IEnvironmentService, INativeEnvironmentService } from 'vs/platform/environment/common/environment';
 import { memoize } from 'vs/base/common/decorators';
 import { FileAccess } from 'vs/base/common/network';
+import { AuthType } from 'vs/base/common/auth';
 
 export const serverOptions: OptionDescriptions<ServerParsedArgs> = {
+	'auth': { type: 'string' },
 	'port': { type: 'string' },
 	'pick-port': { type: 'string' },
 	'connection-token': { type: 'string', cat: 'o', deprecates: 'connectionToken', description: nls.localize('connection-token', "A secret that must be included by the web client with all requests.") },
@@ -63,6 +65,7 @@ export const serverOptions: OptionDescriptions<ServerParsedArgs> = {
 };
 
 export interface ServerParsedArgs {
+	auth?: AuthType;
 	port?: string;
 	'pick-port'?: string;
 	/**
@@ -145,10 +148,15 @@ export interface IServerEnvironmentService extends INativeEnvironmentService {
 	readonly serviceWorkerFileName: string;
 	readonly serviceWorkerPath: string;
 	readonly proxyUri: string;
+	readonly auth: AuthType;
 }
 
 export class ServerEnvironmentService extends NativeEnvironmentService implements IServerEnvironmentService {
 	override get args(): ServerParsedArgs { return super.args as ServerParsedArgs; }
+
+	public get auth(): AuthType {
+		return this.args['auth'] || AuthType.None;
+	}
 
 	public get serviceWorkerFileName(): string {
 		return 'service-worker.js';
