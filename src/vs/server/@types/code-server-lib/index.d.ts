@@ -4,13 +4,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import type { NLSConfiguration, InternalNLSConfiguration } from '../../../base/node/languagePacks';
 import type * as http from 'http';
 import type * as net from 'net';
-import type { AuthType } from 'vs/base/common/auth';
+import type { InternalNLSConfiguration, NLSConfiguration } from '../../../base/node/languagePacks';
 
 declare global {
 	namespace CodeServerLib {
+		export enum AuthType {
+			Password = 'password',
+			None = 'none',
+		}
 
 		export interface ServerParsedArgs {
 			auth: AuthType;
@@ -47,7 +50,7 @@ declare global {
 			'list-extensions'?: boolean;
 			'locate-extension'?: string[];
 			'show-versions'?: boolean;
-			'category'?: string;
+			category?: string;
 
 			'force-disable-user-env'?: boolean;
 			'use-host-proxy'?: string;
@@ -66,8 +69,8 @@ declare global {
 			'web-user-data-dir'?: string;
 			'enable-sync'?: boolean;
 			'github-auth'?: string;
-			'log'?: string;
-			'logsPath'?: string;
+			log?: string;
+			logsPath?: string;
 
 			_: string[];
 		}
@@ -86,7 +89,10 @@ declare global {
 			serverUrl: URL;
 		}
 
-		export type CreateServer = (address: string | net.AddressInfo | null, args: ServerParsedArgs) => Promise<IServerAPI>;
+		export type CreateServer = (
+			address: string | net.AddressInfo | null,
+			args: ServerParsedArgs
+		) => Promise<IServerAPI>;
 
 		export interface ProductDescription {
 			productName: string;
@@ -132,7 +138,10 @@ declare global {
 			waitMarkerFilePath?: string;
 		}
 
-		export type NLSConfigurationWeb = NLSConfiguration | InternalNLSConfiguration;
+		export type NLSConfigurationWeb =
+			| NLSConfiguration
+			| InternalNLSConfiguration;
+
 		export { NLSConfiguration, InternalNLSConfiguration };
 	}
 }
