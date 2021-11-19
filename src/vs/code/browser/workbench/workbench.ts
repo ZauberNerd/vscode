@@ -10,22 +10,12 @@ import { Emitter } from 'vs/base/common/event';
 import { Disposable } from 'vs/base/common/lifecycle';
 import { Schemas } from 'vs/base/common/network';
 import { isEqual } from 'vs/base/common/resources';
-import { URI, UriComponents } from 'vs/base/common/uri';
+import { encodePath, URI, UriComponents } from 'vs/base/common/uri';
 import { generateUuid } from 'vs/base/common/uuid';
 import { request } from 'vs/base/parts/request/browser/request';
 import product from 'vs/platform/product/common/product';
 import { isFolderToOpen, isWorkspaceToOpen } from 'vs/platform/windows/common/windows';
 import { create, ICredentialsProvider, IURLCallbackProvider, IWorkbenchConstructionOptions, IWorkspace, IWorkspaceProvider } from 'vs/workbench/workbench.web.api';
-
-/**
- * Encode a path for opening via the folder or workspace query parameter. This
- * preserves slashes so it can be edited by hand more easily.
- *
- * @author coder
- */
-export const encodePath = (path: string): string => {
-	return path.split('/').map((p) => encodeURIComponent(p)).join('/');
-};
 
 interface ICredential {
 	service: string;
@@ -281,11 +271,11 @@ class WorkspaceProvider implements IWorkspaceProvider {
 		 * @author coder
 		 */
 		const toRemote = (value: string): string => {
-			if (value.startsWith("/")) {
-				return "vscode-remote://" + value;
+			if (value.startsWith('/')) {
+				return 'vscode-remote://' + value;
 			}
-			return value
-		}
+			return value;
+		};
 
 		const query = new URL(document.location.href).searchParams;
 		query.forEach((value, key) => {
