@@ -474,6 +474,25 @@ function doCreateUri(path: string, queryValues: Map<string, string>): URI {
 			enabled: config.settingsSyncOptions.enabled,
 		} : undefined,
 		workspaceProvider: WorkspaceProvider.create(config),
+		/**
+		 * Override relative URLs in the product configuration against the window
+		 * location as necessary. Only paths that must be absolute need to be
+		 * rewritten (for example the webview endpoint); the rest can be left
+		 * relative (for example the update path).
+		 *
+		 * @author coder
+		 */
+		productConfiguration: {
+			...config.productConfiguration,
+			// The webview endpoint contains variables in the format {{var}} so decode
+			// them as `new URI` will encode them.
+			webviewContentExternalBaseUrlTemplate: decodeURIComponent(
+				new URL(
+					config.productConfiguration?.webviewContentExternalBaseUrlTemplate ?? "",
+					window.location.toString(), // This works without toString() but TypeScript thinks otherwise.
+				).toString(),
+			),
+		},
 		urlCallbackProvider: new PollingURLCallbackProvider(),
 		credentialsProvider: new LocalStorageCredentialsProvider()
 	});
