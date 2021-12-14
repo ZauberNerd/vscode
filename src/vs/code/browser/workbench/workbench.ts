@@ -475,6 +475,12 @@ function doCreateUri(path: string, queryValues: Map<string, string>): URI {
 		} : undefined,
 		workspaceProvider: WorkspaceProvider.create(config),
 		/**
+		 * Ensure the remote authority points to the current address since we cannot
+		 * determine this reliably on the backend.
+		 * @author coder
+		 */
+		remoteAuthority: location.host,
+		/**
 		 * Override relative URLs in the product configuration against the window
 		 * location as necessary. Only paths that must be absolute need to be
 		 * rewritten (for example the webview endpoint); the rest can be left
