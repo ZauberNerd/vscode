@@ -268,11 +268,16 @@ class WorkspaceProvider implements IWorkspaceProvider {
 		 * If the value begins with a slash assume it is a file path and convert it to
 		 * use the vscode-remote scheme.
 		 *
+		 * We also add the remote authority in toRemote. It needs to be accurate
+		 * otherwise other URIs won't match it, leading to issues such as this one:
+		 * https://github.com/coder/code-server/issues/4630
+		 *
 		 * @author coder
 		 */
+		const remoteAuthority = location.host
 		const toRemote = (value: string): string => {
 			if (value.startsWith('/')) {
-				return 'vscode-remote://' + value;
+				return 'vscode-remote://' + remoteAuthority + value;
 			}
 			return value;
 		};
@@ -467,6 +472,11 @@ function doCreateUri(path: string, queryValues: Map<string, string>): URI {
 	}
 	const config: IWorkbenchConstructionOptions & { folderUri?: UriComponents, workspaceUri?: UriComponents } = JSON.parse(configElementAttribute);
 
+	/**
+	 * @author coder
+	 */
+	const remoteAuthority = location.host
+
 	// Create workbench
 	create(document.body, {
 		...config,
@@ -479,7 +489,7 @@ function doCreateUri(path: string, queryValues: Map<string, string>): URI {
 		 * determine this reliably on the backend.
 		 * @author coder
 		 */
-		remoteAuthority: location.host,
+		remoteAuthority,
 		/**
 		 * Override relative URLs in the product configuration against the window
 		 * location as necessary. Only paths that must be absolute need to be
